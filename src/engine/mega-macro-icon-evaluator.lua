@@ -5,6 +5,7 @@ local LastMacroIndex = 0
 
 local IconUpdatedCallbacks = {}
 local MacroEffectData = {} -- { Type = "spell" or "item" or "equipment set" or other, Name = "", Icon = 0, Target = "" }
+MegaMacroSpellInfoCache = {}
 
 local function GetTextureFromPetCommand(command)
     if command == "dismiss" then
@@ -72,7 +73,9 @@ local function GetAbilityData(ability)
             return "unknown", nil, nil, MegaMacroTexture
         end
     else
-        local spellInfo = C_Spell.GetSpellInfo(ability)
+        -- C_Spell.GetSpellInfo returns info for the base spellId. 
+        -- Checking for spell info that we've cached before defaulting to C_Spell.GetSpellInfo
+        local spellInfo = MegaMacroSpellInfoCache[ability] or C_Spell.GetSpellInfo(ability)
         local spellName, texture, spellId
 
         if spellInfo then
@@ -80,7 +83,7 @@ local function GetAbilityData(ability)
             texture = spellInfo.iconID
             spellId = spellInfo.spellID
         end
-
+        
         if spellId then
             local shapeshiftFormIndex = GetShapeshiftForm()
             local isActiveStance = shapeshiftFormIndex and shapeshiftFormIndex > 0 and spellId == select(4, GetShapeshiftFormInfo(shapeshiftFormIndex))
@@ -281,6 +284,19 @@ local function UpdateNextMacro()
     return true
 end
 
+-- SpellIds can change dependent on talents selected, so we cache the spellinfo of all spells in our spell book
+local function UpdateSpellInfoCache()
+    local skillLineLines = C_SpellBook.GetNumSpellBookSkillLines()
+    local skillLineInfo = C_SpellBook.GetSpellBookSkillLineInfo(skillLineLines)
+    local lastIndex = skillLineInfo.itemIndexOffset + skillLineInfo.numSpellBookItems
+    for i = 1, lastIndex do
+       local spellInfo = C_SpellBook.GetSpellBookItemInfo(i, Enum.SpellBookSpellBank.Player)
+       if spellInfo and spellInfo.spellID and IsSpellKnown(spellInfo.spellID) then
+            MegaMacroSpellInfoCache[spellInfo.name] = spellInfo
+       end
+    end
+end
+
 local function UpdateAllMacros()
     MacroEffectData = {}
 
@@ -311,6 +327,7 @@ local function UpdateAllMacros()
             break
         end
     end
+    UpdateSpellInfoCache()
 end
 
 MegaMacroIconEvaluator = {}
