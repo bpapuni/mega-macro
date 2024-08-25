@@ -5,7 +5,7 @@ local LastMacroIndex = 0
 
 local IconUpdatedCallbacks = {}
 local MacroEffectData = {} -- { Type = "spell" or "item" or "equipment set" or other, Name = "", Icon = 0, Target = "" }
-MegaMacroSpellInfoCache = {}
+MegaMacroSpellBookCache = {}
 
 local function GetTextureFromPetCommand(command)
     if command == "dismiss" then
@@ -73,9 +73,9 @@ local function GetAbilityData(ability)
             return "unknown", nil, nil, MegaMacroTexture
         end
     else
-        -- C_Spell.GetSpellInfo returns info for the base spellId. 
-        -- Checking for spell info that we've cached before defaulting to C_Spell.GetSpellInfo
-        local spellInfo = MegaMacroSpellInfoCache[ability] or C_Spell.GetSpellInfo(ability)
+        -- Checking C_SpellBook.GetSpellBookItemInfo with cached spellIndex before defaulting to C_Spell.GetSpellInfo
+        local spellIndex, spellBook = unpack(MegaMacroSpellBookCache[ability] or {})
+        local spellInfo = (spellIndex and C_SpellBook.GetSpellBookItemInfo(spellIndex, spellBook)) or C_Spell.GetSpellInfo(ability)
         local spellName, texture, spellId
 
         if spellInfo then
@@ -284,15 +284,14 @@ local function UpdateNextMacro()
     return true
 end
 
--- SpellIds can change dependent on talents selected, so we cache the spellinfo of all spells in our spell book
-local function UpdateSpellInfoCache()
+local function UpdateSpellBookCache()
     local skillLineLines = C_SpellBook.GetNumSpellBookSkillLines()
     local skillLineInfo = C_SpellBook.GetSpellBookSkillLineInfo(skillLineLines)
     local lastIndex = skillLineInfo.itemIndexOffset + skillLineInfo.numSpellBookItems
     for i = 1, lastIndex do
-       local spellInfo = C_SpellBook.GetSpellBookItemInfo(i, Enum.SpellBookSpellBank.Player)
-       if spellInfo and spellInfo.spellID and IsSpellKnown(spellInfo.spellID) then
-            MegaMacroSpellInfoCache[spellInfo.name] = spellInfo
+       local abilityName = C_SpellBook.GetSpellBookItemName(i, Enum.SpellBookSpellBank.Player)
+       if abilityName then
+            MegaMacroSpellBookCache[abilityName] = { i, Enum.SpellBookSpellBank.Player }
        end
     end
 end
@@ -327,7 +326,7 @@ local function UpdateAllMacros()
             break
         end
     end
-    UpdateSpellInfoCache()
+    UpdateSpellBookCache()
 end
 
 MegaMacroIconEvaluator = {}
