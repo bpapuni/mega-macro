@@ -49,7 +49,9 @@ HighestMaxMacroCount = math.max(MacroLimits.GlobalCount, MacroLimits.PerClassCou
 MegaMacroInfoFunctions = {
 	Spell = {
 		GetCooldown = function(abilityId)
-			local spellCooldownInfo = C_Spell.GetSpellCooldown(abilityId) or {startTime = 0, duration = 0, isEnabled = false, modRate = 0};
+			local spellName = C_Spell.GetSpellName(abilityId)
+			local spellIndex, spellBook = unpack(MegaMacroSpellBookCache[spellName] or {})
+			local spellCooldownInfo = (spellIndex and C_SpellBook.GetSpellBookItemCooldown(spellIndex, spellBook)) or C_Spell.GetSpellCooldown(abilityId) or { startTime = 0, duration = 0, isEnabled = false, modRate = 0 };
 			return spellCooldownInfo.startTime, spellCooldownInfo.duration, spellCooldownInfo.isEnabled, spellCooldownInfo.modRate;
 		end,
 		GetCount = C_Spell.GetSpellCastCount,
